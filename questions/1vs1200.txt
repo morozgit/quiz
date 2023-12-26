@@ -1,3 +1,7 @@
+# logging.basicConfig(level=logging.DEBUG)
+
+# pool = ConnectionPool(host='redis-10444.c327.europe-west1-2.gce.cloud.redislabs.com', port=10444, password='WdsJFjUOsMSF7foxK7rUPTZitodsuSfW', decode_responses=True)
+# redis = StrictRedis(connection_pool=pool)
 Чемпионат:
 Один против дюжины. 2000 год
 
