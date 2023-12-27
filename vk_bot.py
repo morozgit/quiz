@@ -13,45 +13,56 @@ from quiz import quiz_answers, quiz_questions
 QUESTION_ID = 0
 
 
-def get_keyboard(event, vk_api):
+def discussion_with_bot(event, vk_api):
     keyboard = VkKeyboard(one_time=True)
     keyboard.add_button('Новый вопрос', color=VkKeyboardColor.PRIMARY)
     keyboard.add_button('Сдаться', color=VkKeyboardColor.NEGATIVE)
     keyboard.add_line()
     keyboard.add_button('Мой счет', color=VkKeyboardColor.SECONDARY)
+
+    if event.text == 'Начать':
+        text = 'Привет! Да начнётся викторина!'
+        # keyboard = keyboard.get_keyboard(),
+    elif event.text == 'Новый вопрос':
+        text = handle_new_question_request(event, vk_api)
+    elif event.text == 'Сдаться':
+        text = handle_give_up(event, vk_api)
+    else:
+        text = handle_solution_attempt(event, vk_api)
+
     vk_api.messages.send(
-                user_id=event.user_id,
-                random_id=get_random_id(),
-                keyboard=keyboard.get_keyboard(),
-                message=event.message
-            )
+        user_id=event.user_id,
+        random_id=get_random_id(),
+        keyboard=keyboard.get_keyboard(),
+        message=text,
+    )
+
 
 def handle_new_question_request(event, vk_api):
-    if event.text == 'Новый вопрос':
-        r.set(event.user_id, quiz_questions[f'Вопрос {QUESTION_ID}'])
-        question = r.get(event.user_id)
-        vk_api.messages.send(
-            user_id=event.user_id,
-            message=question,
-            random_id=random.randint(1,1000)
-        )
-        # return handle_solution_attempt(event, vk_api)
+    global QUESTION_ID
+    r.set(event.user_id, quiz_questions[f'Вопрос {QUESTION_ID}'])
+    return r.get(event.user_id)
+
 
 def handle_solution_attempt(event, vk_api):
     global QUESTION_ID
     if event.text.split('.')[0] in quiz_answers[f'Ответ {QUESTION_ID}']:
-        vk_api.messages.send(
-                user_id=event.user_id,
-                message='Правильно!',
-                random_id=random.randint(1,1000)
-            )
+        QUESTION_ID += 1
+        return 'Правильно!'
     else:
-        vk_api.messages.send(
-                    user_id=event.user_id,
-                    message='Неправильно… Попробуешь ещё раз?',
-                    random_id=random.randint(1,1000)
-                )
+        return 'Неправильно… Попробуешь ещё раз?'
+
+
+def handle_give_up(update, context):
+    global QUESTION_ID
+    vk_api.messages.send(
+        user_id=event.user_id,
+        message=quiz_answers[f'Ответ {QUESTION_ID}'],
+        random_id=random.randint(1, 1000)
+    )
     QUESTION_ID += 1
+    return handle_new_question_request(update, context)
+
 
 if __name__ == '__main__':
     pool = redis.ConnectionPool(host='localhost', port=6379, db=0, decode_responses=True)
@@ -64,4 +75,4 @@ if __name__ == '__main__':
 
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-            get_keyboard(event, vk_api)
+            discussion_with_bot(event, vk_api)
