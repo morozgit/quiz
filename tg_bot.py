@@ -66,8 +66,12 @@ def cancel(bot, update):
 
 
 if __name__ == '__main__':
-    pool = redis.ConnectionPool(host='localhost', port=6379, db=0, decode_responses=True)
-    r = redis.Redis(connection_pool=pool)
+    r = redis.Redis(
+        host='redis-10444.c327.europe-west1-2.gce.cloud.redislabs.com',
+        port=10444,
+        password='WdsJFjUOsMSF7foxK7rUPTZitodsuSfW',
+        decode_responses=True
+    )
     load_dotenv()
     
     tg_token = os.getenv("TELEGRAM_BOT_TOKEN")
