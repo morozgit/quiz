@@ -97,5 +97,3 @@ if __name__ == '__main__':
     dispatcher.add_handler(conv_handler)
     updater.start_polling()
     updater.idle()
-
-    
