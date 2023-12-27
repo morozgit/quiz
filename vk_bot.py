@@ -65,17 +65,21 @@ def handle_give_up(update, context):
 
 
 if __name__ == '__main__':
-    r = redis.Redis(
-        host='redis-10444.c327.europe-west1-2.gce.cloud.redislabs.com',
-        port=10444,
-        password='WdsJFjUOsMSF7foxK7rUPTZitodsuSfW',
-        decode_responses=True
-    )
     load_dotenv(find_dotenv())
     vk_token = os.environ.get("VK_TOKEN")
     vk_session = vk.VkApi(token=vk_token)
     vk_api = vk_session.get_api()
     longpoll = VkLongPoll(vk_session)
+
+    host = os.environ.get("REDIS_HOST")
+    port = os.environ.get("REDIS_PORT")
+    password = os.environ.get("REDIS_PASSWORD")
+    r = redis.Redis(
+        host=host,
+        port=int(port),
+        password=password,
+        decode_responses=True
+    )
 
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW and event.to_me:

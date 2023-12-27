@@ -1,9 +1,8 @@
 import logging
 import os
 
-# from redis import ConnectionPool, StrictRedis
 import redis
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from telegram import (Bot, InlineKeyboardMarkup, KeyboardButton,
                       ReplyKeyboardMarkup, ReplyKeyboardRemove)
 from telegram.ext import (CommandHandler, ConversationHandler, Filters,
@@ -66,10 +65,16 @@ def cancel(bot, update):
 
 
 if __name__ == '__main__':
-    pool = redis.ConnectionPool(host='localhost', port=6379, db=0, decode_responses=True)
-    r = redis.Redis(connection_pool=pool)
-    load_dotenv()
-    
+    load_dotenv(find_dotenv())
+    host = os.environ.get("REDIS_HOST")
+    port = os.environ.get("REDIS_PORT")
+    password = os.environ.get("REDIS_PASSWORD")
+    r = redis.Redis(
+        host=host,
+        port=int(port),
+        password=password,
+        decode_responses=True
+    )
     tg_token = os.getenv("TELEGRAM_BOT_TOKEN")
     updater = Updater(tg_token)
     dispatcher = updater.dispatcher
