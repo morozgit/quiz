@@ -22,7 +22,6 @@ def discussion_with_bot(event, vk_api):
 
     if event.text == 'Начать':
         text = 'Привет! Я бот для викторин!'
-        # keyboard = keyboard.get_keyboard(),
     elif event.text == 'Новый вопрос':
         text = handle_new_question_request(event, vk_api)
     elif event.text == 'Сдаться':
