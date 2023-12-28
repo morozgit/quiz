@@ -1,5 +1,8 @@
-with open("questions/1vs1200.txt", "r", encoding="KOI8-R") as my_file:
-    file_contents = my_file.read()
+import os
+
+for filename in os.listdir('./questions'):
+    with open('questions/' + filename, 'r', encoding='KOI8-R') as file:
+        file_contents = file.read()
 quiz_questions = {}
 quiz_answers = {}
 
