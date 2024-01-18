@@ -8,9 +8,7 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.longpoll import VkEventType, VkLongPoll
 from vk_api.utils import get_random_id
 
-from quiz import quiz_answers, quiz_questions
-
-QUESTION_ID = 0
+from quiz import QuestionsLibrary
 
 
 def discussion_with_bot(event, vk_api):
@@ -38,28 +36,26 @@ def discussion_with_bot(event, vk_api):
 
 
 def handle_new_question_request(event, vk_api):
-    global QUESTION_ID
-    r.set(event.user_id, quiz_questions[f'Вопрос {QUESTION_ID}'])
+    r.set(event.user_id, quiz_questions[f'Вопрос {library.get_question_count()}'])
     return r.get(event.user_id)
 
 
 def handle_solution_attempt(event, vk_api):
     global QUESTION_ID
-    if event.text.split('.')[0] in quiz_answers[f'Ответ {QUESTION_ID}']:
-        QUESTION_ID += 1
+    if event.text.split('.')[0] in quiz_answers[f'Ответ {library.get_question_count()}']:
+        library.set_question_count(1)
         return 'Правильно!'
     else:
         return 'Неправильно… Попробуешь ещё раз?'
 
 
 def handle_give_up(update, context):
-    global QUESTION_ID
     vk_api.messages.send(
         user_id=event.user_id,
-        message=quiz_answers[f'Ответ {QUESTION_ID}'],
+        message=quiz_answers[f'Ответ {library.get_question_count()}'],
         random_id=random.randint(1, 1000)
     )
-    QUESTION_ID += 1
+    library.set_question_count(1)
     return handle_new_question_request(update, context)
 
 
@@ -69,6 +65,11 @@ if __name__ == '__main__':
     vk_session = vk.VkApi(token=vk_token)
     vk_api = vk_session.get_api()
     longpoll = VkLongPoll(vk_session)
+
+    library = QuestionsLibrary()
+    library.read_file()
+    quiz_questions = library.create_quiz_questions()
+    quiz_answers = library.create_quiz_answers()
 
     host = os.environ.get("REDIS_HOST")
     port = os.environ.get("REDIS_PORT")

@@ -3,15 +3,13 @@ import os
 
 import redis
 from dotenv import find_dotenv, load_dotenv
-from telegram import (Bot, InlineKeyboardMarkup, KeyboardButton,
-                      ReplyKeyboardMarkup, ReplyKeyboardRemove)
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (CommandHandler, ConversationHandler, Filters,
                           MessageHandler, Updater)
 
-from quiz import quiz_answers, quiz_questions
+from quiz import QuestionsLibrary
 
 QUESTION, ANSWER = range(2)
-QUESTION_ID = 0
 logger = logging.getLogger(__name__)
 
 
@@ -26,41 +24,37 @@ def start(update, context):
 
 
 def handle_new_question_request(update, context):
-    global QUESTION_ID
-    r.set(update.effective_user.id, quiz_questions[f'Вопрос {QUESTION_ID}'])
+    r.set(update.effective_user.id, quiz_questions[f'Вопрос {library.get_question_count()}'])
     context.bot.sendMessage(chat_id=update.message.chat_id,
                             text=r.get(update.effective_user.id))
     return ANSWER
 
 
 def handle_solution_attempt(update, context):
-    global QUESTION_ID
-    if update.message.text.split('.')[0] in quiz_answers[f'Ответ {QUESTION_ID}']:
+    if update.message.text.split('.')[0] in quiz_answers[f'Ответ {library.get_question_count()}']:
         context.bot.sendMessage(chat_id=update.message.chat_id,
                                 text='Правильно!')
     else:
         context.bot.sendMessage(chat_id=update.message.chat_id,
                                 text='Неправильно… Попробуешь ещё раз?')
         return ANSWER
-    QUESTION_ID += 1
+    library.set_question_count(1)
     return QUESTION
 
 
 def handle_give_up(update, context):
-    global QUESTION_ID
     context.bot.sendMessage(chat_id=update.message.chat_id,
-                            text=quiz_answers[f'Ответ {QUESTION_ID}'])
-    QUESTION_ID += 1
+                            text=quiz_answers[f'Ответ {library.get_question_count()}'])
+    library.set_question_count(1)
     return handle_new_question_request(update, context)
 
 
 def cancel(bot, update):
-    global QUESTION_ID
     user = update.message.from_user
     logger.info("User %s canceled the conversation.", user.first_name)
     update.message.reply_text('Bye! I hope we can talk again some day.',
                               reply_markup=ReplyKeyboardRemove())
-    QUESTION_ID = 0
+    library.reset_question_count()
     return ConversationHandler.END
 
 
@@ -75,6 +69,10 @@ if __name__ == '__main__':
         password=password,
         decode_responses=True
     )
+    library = QuestionsLibrary()
+    library.read_file()
+    quiz_questions = library.create_quiz_questions()
+    quiz_answers = library.create_quiz_answers()
     tg_token = os.getenv("TELEGRAM_BOT_TOKEN")
     updater = Updater(tg_token)
     dispatcher = updater.dispatcher
