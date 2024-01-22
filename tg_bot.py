@@ -7,7 +7,8 @@ from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (CommandHandler, ConversationHandler, Filters,
                           MessageHandler, Updater)
 
-from quiz import QuestionsLibrary
+from quiz import (create_quiz_answers, create_quiz_questions,
+                  count_question_id, get_question_id, reset_question_id)
 
 QUESTION, ANSWER = range(2)
 logger = logging.getLogger(__name__)
@@ -24,28 +25,28 @@ def start(update, context):
 
 
 def handle_new_question_request(update, context):
-    r.set(update.effective_user.id, quiz_questions[f'Вопрос {library.get_question_count()}'])
+    r.set(update.effective_user.id, quiz_questions[f'Вопрос {get_question_id()}'])
     context.bot.sendMessage(chat_id=update.message.chat_id,
                             text=r.get(update.effective_user.id))
     return ANSWER
 
 
 def handle_solution_attempt(update, context):
-    if update.message.text.split('.')[0] in quiz_answers[f'Ответ {library.get_question_count()}']:
+    if update.message.text.split('.')[0] in quiz_answers[f'Ответ {get_question_id()}']:
         context.bot.sendMessage(chat_id=update.message.chat_id,
                                 text='Правильно!')
     else:
         context.bot.sendMessage(chat_id=update.message.chat_id,
                                 text='Неправильно… Попробуешь ещё раз?')
         return ANSWER
-    library.set_question_count(1)
+    count_question_id(1)
     return QUESTION
 
 
 def handle_give_up(update, context):
     context.bot.sendMessage(chat_id=update.message.chat_id,
-                            text=quiz_answers[f'Ответ {library.get_question_count()}'])
-    library.set_question_count(1)
+                            text=quiz_answers[f'Ответ {get_question_id()}'])
+    count_question_id(1)
     return handle_new_question_request(update, context)
 
 
@@ -54,7 +55,7 @@ def cancel(bot, update):
     logger.info("User %s canceled the conversation.", user.first_name)
     update.message.reply_text('Bye! I hope we can talk again some day.',
                               reply_markup=ReplyKeyboardRemove())
-    library.reset_question_count()
+    reset_question_id()
     return ConversationHandler.END
 
 
@@ -69,10 +70,8 @@ if __name__ == '__main__':
         password=password,
         decode_responses=True
     )
-    library = QuestionsLibrary()
-    library.read_file()
-    quiz_questions = library.create_quiz_questions()
-    quiz_answers = library.create_quiz_answers()
+    quiz_questions = create_quiz_questions()
+    quiz_answers = create_quiz_answers()
     tg_token = os.getenv("TELEGRAM_BOT_TOKEN")
     updater = Updater(tg_token)
     dispatcher = updater.dispatcher
