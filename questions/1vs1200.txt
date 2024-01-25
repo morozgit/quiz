@@ -1,3 +1,8 @@
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+sudo nano /etc/resolv.conf
+
+
 # logging.basicConfig(level=logging.DEBUG)
 
 # pool = ConnectionPool(host='redis-10444.c327.europe-west1-2.gce.cloud.redislabs.com', port=10444, password='WdsJFjUOsMSF7foxK7rUPTZitodsuSfW', decode_responses=True)

@@ -8,10 +8,11 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.longpoll import VkEventType, VkLongPoll
 from vk_api.utils import get_random_id
 
-from quiz import QuestionsLibrary
+from quiz import (create_quiz_answers, create_quiz_questions,
+                  parse_question_file)
 
 
-def discussion_with_bot(event, vk_api):
+def discussion_with_bot(event, vk_api, chat_data):
     keyboard = VkKeyboard(one_time=True)
     keyboard.add_button('Новый вопрос', color=VkKeyboardColor.PRIMARY)
     keyboard.add_button('Сдаться', color=VkKeyboardColor.NEGATIVE)
@@ -21,11 +22,11 @@ def discussion_with_bot(event, vk_api):
     if event.text == 'Начать':
         text = 'Привет! Я бот для викторин!'
     elif event.text == 'Новый вопрос':
-        text = handle_new_question_request(event, vk_api)
+        text = handle_new_question_request(event, vk_api, chat_data)
     elif event.text == 'Сдаться':
-        text = handle_give_up(event, vk_api)
+        text = handle_give_up(event, vk_api, chat_data)
     else:
-        text = handle_solution_attempt(event, vk_api)
+        text = handle_solution_attempt(event, vk_api, chat_data)
 
     vk_api.messages.send(
         user_id=event.user_id,
@@ -35,28 +36,28 @@ def discussion_with_bot(event, vk_api):
     )
 
 
-def handle_new_question_request(event, vk_api):
-    r.set(event.user_id, quiz_questions[f'Вопрос {library.get_question_count()}'])
+def handle_new_question_request(event, vk_api, chat_data):
+    r.set(event.user_id, quiz_questions[f'Вопрос {chat_data["vk_question_id"]}'])
     return r.get(event.user_id)
 
 
-def handle_solution_attempt(event, vk_api):
-    global QUESTION_ID
-    if event.text.split('.')[0] in quiz_answers[f'Ответ {library.get_question_count()}']:
-        library.set_question_count(1)
+def handle_solution_attempt(event, vk_api, chat_data):
+    if event.text.split('.')[0] in quiz_answers[f'Ответ {chat_data["vk_question_id"]}']:
+        chat_data["vk_question_id"] += 1
         return 'Правильно!'
     else:
         return 'Неправильно… Попробуешь ещё раз?'
 
 
-def handle_give_up(update, context):
+def handle_give_up(update, context, chat_data):
     vk_api.messages.send(
         user_id=event.user_id,
-        message=quiz_answers[f'Ответ {library.get_question_count()}'],
+        message=quiz_answers[f'Ответ {chat_data["vk_question_id"]}'],
         random_id=random.randint(1, 1000)
     )
-    library.set_question_count(1)
-    return handle_new_question_request(update, context)
+    chat_data["vk_question_id"] += 1
+    print(chat_data["vk_question_id"])
+    return handle_new_question_request(update, context, chat_data)
 
 
 if __name__ == '__main__':
@@ -66,11 +67,11 @@ if __name__ == '__main__':
     vk_api = vk_session.get_api()
     longpoll = VkLongPoll(vk_session)
 
-    library = QuestionsLibrary()
-    library.read_file()
-    quiz_questions = library.create_quiz_questions()
-    quiz_answers = library.create_quiz_answers()
-
+    file_contents = parse_question_file()
+    quiz_questions = create_quiz_questions(file_contents)
+    quiz_answers = create_quiz_answers(file_contents)
+    chat_data = {}
+    chat_data['vk_question_id'] = 0
     host = os.environ.get("REDIS_HOST")
     port = os.environ.get("REDIS_PORT")
     password = os.environ.get("REDIS_PASSWORD")
@@ -83,4 +84,4 @@ if __name__ == '__main__':
 
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-            discussion_with_bot(event, vk_api)
+            discussion_with_bot(event, vk_api, chat_data)

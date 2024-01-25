@@ -69,11 +69,18 @@ echo REDIS_PASSWORD=ваш REDIS_PASSWORD >> .env
 ## Запуск
 
 ### Запуск ботов
-Из директории с проектом выполните команды.
+Из директории с проектом выполните команды и передайте в параметры папку с вопросами.
+
+Например Бот в TG
 ```bush
-python3 tg_bot.py Бот в TG
-python3 vk_bot.py Бот в VK
+python3 tg_bot.py ./questions/ 
 ```
+
+Например Бот в VK
+```bush
+python3 vk_bot.py ./questions/ 
+```
+
 
 ## Цели проекта
 
