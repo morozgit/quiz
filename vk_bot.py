@@ -12,7 +12,7 @@ from quiz import (create_quiz_answers, create_quiz_questions,
                   parse_question_file)
 
 
-def discussion_with_bot(event, vk_api, chat_data):
+def discussion_with_bot(event, vk_api, chat_data, quiz_questions, quiz_answers, r):
     keyboard = VkKeyboard(one_time=True)
     keyboard.add_button('Новый вопрос', color=VkKeyboardColor.PRIMARY)
     keyboard.add_button('Сдаться', color=VkKeyboardColor.NEGATIVE)
@@ -22,11 +22,11 @@ def discussion_with_bot(event, vk_api, chat_data):
     if event.text == 'Начать':
         text = 'Привет! Я бот для викторин!'
     elif event.text == 'Новый вопрос':
-        text = handle_new_question_request(event, vk_api, chat_data)
+        text = handle_new_question_request(event, chat_data, quiz_questions, r)
     elif event.text == 'Сдаться':
-        text = handle_give_up(event, vk_api, chat_data)
+        text = handle_give_up(event, vk_api, chat_data, quiz_questions, quiz_answers, r)
     else:
-        text = handle_solution_attempt(event, vk_api, chat_data)
+        text = handle_solution_attempt(event, chat_data, quiz_answers)
 
     vk_api.messages.send(
         user_id=event.user_id,
@@ -36,12 +36,13 @@ def discussion_with_bot(event, vk_api, chat_data):
     )
 
 
-def handle_new_question_request(event, vk_api, chat_data):
-    r.set(event.user_id, quiz_questions[f'Вопрос {chat_data["vk_question_id"]}'])
-    return r.get(event.user_id)
+def handle_new_question_request(event, chat_data, quiz_questions, r):
+    question_text = quiz_questions[f'Вопрос {chat_data["vk_question_id"]}']
+    r.set(event.user_id, question_text)
+    return question_text
 
 
-def handle_solution_attempt(event, vk_api, chat_data):
+def handle_solution_attempt(event, chat_data, quiz_answers):
     if event.text.split('.')[0] in quiz_answers[f'Ответ {chat_data["vk_question_id"]}']:
         chat_data["vk_question_id"] += 1
         return 'Правильно!'
@@ -49,18 +50,16 @@ def handle_solution_attempt(event, vk_api, chat_data):
         return 'Неправильно… Попробуешь ещё раз?'
 
 
-def handle_give_up(update, context, chat_data):
+def handle_give_up(event, vk_api, chat_data, quiz_questions, quiz_answers, r):
     vk_api.messages.send(
         user_id=event.user_id,
         message=quiz_answers[f'Ответ {chat_data["vk_question_id"]}'],
         random_id=random.randint(1, 1000)
     )
     chat_data["vk_question_id"] += 1
-    print(chat_data["vk_question_id"])
-    return handle_new_question_request(update, context, chat_data)
+    return handle_new_question_request(event, chat_data, quiz_questions, r)
 
-
-if __name__ == '__main__':
+def main ():
     load_dotenv(find_dotenv())
     vk_token = os.environ.get("VK_TOKEN")
     vk_session = vk.VkApi(token=vk_token)
@@ -84,4 +83,15 @@ if __name__ == '__main__':
 
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-            discussion_with_bot(event, vk_api, chat_data)
+            user_id = event.user_id
+            if user_id not in chat_data:
+                chat_data[user_id] = {'vk_question_id': 0}
+            discussion_with_bot(event,
+                                vk_api,
+                                chat_data,
+                                quiz_questions,
+                                quiz_answers, r)
+
+    
+if __name__ == '__main__':
+    main()

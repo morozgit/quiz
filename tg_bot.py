@@ -25,14 +25,15 @@ def start(update, context):
     return QUESTION
 
 
-def handle_new_question_request(update, context):
-    r.set(update.effective_user.id, quiz_questions[f'Вопрос {context.chat_data["tg_question_id"]}'])
-    context.bot.sendMessage(chat_id=update.message.chat_id,
-                            text=r.get(update.effective_user.id))
+def handle_new_question_request(update, context, quiz_questions, r):
+    question_text = quiz_questions[f'Вопрос {context.chat_data["tg_question_id"]}']
+    r.set(update.effective_user.id, question_text)
+    context.bot.sendMessage(chat_id=update.message.chat_id, text=question_text)
+
     return ANSWER
 
 
-def handle_solution_attempt(update, context):
+def handle_solution_attempt(update, context, quiz_answers, r):
     if update.message.text.split('.')[0] in quiz_answers[f'Ответ {context.chat_data["tg_question_id"]}']:
         context.bot.sendMessage(chat_id=update.message.chat_id,
                                 text='Правильно!')
@@ -44,11 +45,11 @@ def handle_solution_attempt(update, context):
     return QUESTION
 
 
-def handle_give_up(update, context):
+def handle_give_up(update, context, quiz_questions, quiz_answers, r):
     context.bot.sendMessage(chat_id=update.message.chat_id,
                             text=quiz_answers[f'Ответ {context.chat_data["tg_question_id"]}'])
     context.chat_data['tg_question_id'] += 1
-    return handle_new_question_request(update, context)
+    return handle_new_question_request(update, context, quiz_questions, r)
 
 
 def cancel(update, context):
@@ -60,7 +61,7 @@ def cancel(update, context):
     return ConversationHandler.END
 
 
-if __name__ == '__main__':
+def main():
     load_dotenv(find_dotenv())
     host = os.environ.get("REDIS_HOST")
     port = os.environ.get("REDIS_PORT")
@@ -79,15 +80,14 @@ if __name__ == '__main__':
     dispatcher = updater.dispatcher
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
-
         states={
             QUESTION: [MessageHandler(Filters.regex('^Новый вопрос'),
-                                      handle_new_question_request)],
+                                      lambda update, context: handle_new_question_request(update, context, quiz_questions, r))],
 
             ANSWER: [MessageHandler(Filters.regex('^Сдаться'),
-                                    handle_give_up),
+                                    lambda update, context: handle_give_up(update, context, quiz_questions, quiz_answers, r)),
                      MessageHandler(Filters.text & ~Filters.command,
-                                    handle_solution_attempt),
+                                    lambda update, context: handle_solution_attempt(update, context, quiz_answers, r)),
                      ],
         },
 
@@ -96,3 +96,7 @@ if __name__ == '__main__':
     dispatcher.add_handler(conv_handler)
     updater.start_polling()
     updater.idle()
+
+
+if __name__ == '__main__':
+    main()

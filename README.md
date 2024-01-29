@@ -71,14 +71,19 @@ echo REDIS_PASSWORD=ваш REDIS_PASSWORD >> .env
 ### Запуск ботов
 Из директории с проектом выполните команды и передайте в параметры папку с вопросами.
 
-Например Бот в TG
+По умолчанию вопросы хронятся в директории questions
 ```bush
-python3 tg_bot.py ./questions/ 
+python3 quiz.py ./questions/ 
 ```
 
-Например Бот в VK
+Запуск бота в TG
 ```bush
-python3 vk_bot.py ./questions/ 
+python3 tg_bot.py
+```
+
+Запуск бота в VK
+```bush
+python3 vk_bot.py
 ```
 
 
