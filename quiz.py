@@ -22,21 +22,24 @@ def create_quiz_answers(file_contents):
     return quiz_answers
 
 
-def parse_question_file(path=None):
+def parse_question_file(path='./questions'):
     file_contents = []
-    if path is None:
-        path = './questions'
     for filename in os.listdir(path):
         with open(f'{path}/' + filename, 'r', encoding='KOI8-R') as file:
             file_contents.append(file.read())
     return file_contents
 
 
-if __name__ == '__main__':
+def create_parser():
     parser = argparse.ArgumentParser(
         description='Скрипт парсит вопросы'
     )
-    parser.add_argument('path', help='Путь до вопросов')
+    parser.add_argument('--path', help='Путь до вопросов', default='./questions')
+    return parser
+
+
+if __name__ == '__main__':
+    parser = create_parser()
     args = parser.parse_args()
     path = args.path
     file_contents = parse_question_file(path)

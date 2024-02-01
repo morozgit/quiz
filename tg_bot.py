@@ -7,7 +7,7 @@ from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (CommandHandler, ConversationHandler, Filters,
                           MessageHandler, Updater)
 
-from quiz import (create_quiz_answers, create_quiz_questions,
+from quiz import (create_parser, create_quiz_answers, create_quiz_questions,
                   parse_question_file)
 
 QUESTION, ANSWER = range(2)
@@ -72,7 +72,10 @@ def main():
         password=password,
         decode_responses=True
     )
-    file_contents = parse_question_file()
+    parser = create_parser()
+    args = parser.parse_args()
+    path = args.path
+    file_contents = parse_question_file(path)
     quiz_questions = create_quiz_questions(file_contents)
     quiz_answers = create_quiz_answers(file_contents)
     tg_token = os.getenv("TELEGRAM_BOT_TOKEN")

@@ -8,11 +8,11 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.longpoll import VkEventType, VkLongPoll
 from vk_api.utils import get_random_id
 
-from quiz import (create_quiz_answers, create_quiz_questions,
+from quiz import (create_parser, create_quiz_answers, create_quiz_questions,
                   parse_question_file)
 
 
-def discussion_with_bot(event, vk_api, chat_data, quiz_questions, quiz_answers, r):
+def discussion_with_bot(event, vk_api, chat_data, quiz_questions, quiz_answers, r, user_id):
     keyboard = VkKeyboard(one_time=True)
     keyboard.add_button('Новый вопрос', color=VkKeyboardColor.PRIMARY)
     keyboard.add_button('Сдаться', color=VkKeyboardColor.NEGATIVE)
@@ -22,11 +22,11 @@ def discussion_with_bot(event, vk_api, chat_data, quiz_questions, quiz_answers, 
     if event.text == 'Начать':
         text = 'Привет! Я бот для викторин!'
     elif event.text == 'Новый вопрос':
-        text = handle_new_question_request(event, chat_data, quiz_questions, r)
+        text = handle_new_question_request(event, chat_data, quiz_questions, r, user_id)
     elif event.text == 'Сдаться':
-        text = handle_give_up(event, vk_api, chat_data, quiz_questions, quiz_answers, r)
+        text = handle_give_up(event, vk_api, chat_data, quiz_questions, quiz_answers, r, user_id)
     else:
-        text = handle_solution_attempt(event, chat_data, quiz_answers)
+        text = handle_solution_attempt(event, chat_data, quiz_answers,user_id)
 
     vk_api.messages.send(
         user_id=event.user_id,
@@ -36,41 +36,44 @@ def discussion_with_bot(event, vk_api, chat_data, quiz_questions, quiz_answers, 
     )
 
 
-def handle_new_question_request(event, chat_data, quiz_questions, r):
-    question_text = quiz_questions[f'Вопрос {chat_data["vk_question_id"]}']
+def handle_new_question_request(event, chat_data, quiz_questions, r, user_id):
+    question_text = quiz_questions[f'Вопрос {chat_data[user_id]["vk_question_id"]}']
     r.set(event.user_id, question_text)
     return question_text
 
 
-def handle_solution_attempt(event, chat_data, quiz_answers):
-    if event.text.split('.')[0] in quiz_answers[f'Ответ {chat_data["vk_question_id"]}']:
+def handle_solution_attempt(event, chat_data, quiz_answers,user_id):
+    if event.text.split('.')[0] in quiz_answers[f'Ответ {chat_data[user_id]["vk_question_id"]}']:
         chat_data["vk_question_id"] += 1
         return 'Правильно!'
     else:
         return 'Неправильно… Попробуешь ещё раз?'
 
 
-def handle_give_up(event, vk_api, chat_data, quiz_questions, quiz_answers, r):
+def handle_give_up(event, vk_api, chat_data, quiz_questions, quiz_answers, r, user_id):
     vk_api.messages.send(
         user_id=event.user_id,
-        message=quiz_answers[f'Ответ {chat_data["vk_question_id"]}'],
+        message=quiz_answers[f'Ответ {chat_data[user_id]["vk_question_id"]}'],
         random_id=random.randint(1, 1000)
     )
-    chat_data["vk_question_id"] += 1
-    return handle_new_question_request(event, chat_data, quiz_questions, r)
+    chat_data[user_id]["vk_question_id"] += 1
+    return handle_new_question_request(event, chat_data, quiz_questions, r, user_id)
 
-def main ():
+
+def main():
     load_dotenv(find_dotenv())
     vk_token = os.environ.get("VK_TOKEN")
     vk_session = vk.VkApi(token=vk_token)
     vk_api = vk_session.get_api()
     longpoll = VkLongPoll(vk_session)
 
-    file_contents = parse_question_file()
+    parser = create_parser()
+    args = parser.parse_args()
+    path = args.path
+    file_contents = parse_question_file(path)
     quiz_questions = create_quiz_questions(file_contents)
     quiz_answers = create_quiz_answers(file_contents)
     chat_data = {}
-    chat_data['vk_question_id'] = 0
     host = os.environ.get("REDIS_HOST")
     port = os.environ.get("REDIS_PORT")
     password = os.environ.get("REDIS_PASSWORD")
@@ -90,7 +93,7 @@ def main ():
                                 vk_api,
                                 chat_data,
                                 quiz_questions,
-                                quiz_answers, r)
+                                quiz_answers, r, user_id)
 
     
 if __name__ == '__main__':
